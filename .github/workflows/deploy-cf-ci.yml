@@ -1,0 +1,39 @@
+name: Github Actions CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  cloud_function_deployment:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: 'actions/checkout@v3'
+
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_ACCOUNT_KEY }}'
+
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
+      with:
+        version: '>= 363.0.0'
+
+    - name: 'Use to deploy a cloud function gen 2'
+      run: |
+        gcloud config set project ${{ secrets.GCP_PROJECT_NAME }}
+        gcloud functions deploy ${{ secrets.GCP_CF_NAME }} \
+        --gen2 \
+        --runtime=python311 \
+        --region=us-central1 \
+        --service-account=${{ secrets.GCP_SA_EMAIL }} \
+        --source=. \
+        --trigger-http \
+        --entry-point=main \
+        --memory=512MiB \
+        --max-instances=10 \
+        --timeout=540s \
+        --set-env-vars PROJECT_NAME="${{ secrets.GCP_PROJECT_NAME }}",DATASET_STAGING="${{ secrets.GCP_DATASET_STAGING }}",DATASET_SOURCES="${{ secrets.GCP_DATASET_SOURCES }}",TABLE_SCRAP_GAMES="${{ secrets.GCP_TABLE_SCRAP_GAMES }}",TABLE_STATS_SCRAP_GAMES="${{ secrets.GCP_TABLE_STATS_SCRAP_GAMES }}"
